@@ -6,21 +6,23 @@ import {
   NavigationContainer,
   NavigationIndependentTree,
 } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'react-native';
 import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import TabBarIcon from './components/TabBarIcon';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
     <AstroProvider>
-        <GestureHandlerRootView>
-          <NavigationContainer>
-            <StatusBar />
-            <Stack.Navigator
-              initialRouteName="Home"
+      <GestureHandlerRootView>
+        <NavigationContainer>
+          <StatusBar backgroundColor="#4C1D95" barStyle="light-content" />
+          <SafeAreaView style={{flex:1}}>
+            <Tab.Navigator
               screenOptions={{
                 headerStyle: {
                   backgroundColor: '#4C1D95',
@@ -29,26 +31,53 @@ export default function App() {
                 headerTitleStyle: {
                   fontWeight: 'bold',
                 },
+                tabBarStyle: {
+                  backgroundColor: 'white',
+                  borderTopWidth: 1,
+                  borderTopColor: '#E5E7EB',
+                  height: 85,
+                  paddingBottom: 20,
+                  paddingTop: 8,
+                },
+                tabBarActiveTintColor: '#4C1D95',
+                tabBarInactiveTintColor: '#6B7280',
+                tabBarShowLabel: false,
               }}
             >
-              <Stack.Screen
+              <Tab.Screen
                 name="Home"
                 component={HomeScreen}
-                options={{ title: 'Astro Journal' }}
+                options={{
+                  title: 'Astro Journal',
+                  tabBarIcon: ({ focused }) => (
+                    <TabBarIcon name="home" focused={focused} />
+                  ),
+                }}
               />
-              <Stack.Screen
+              <Tab.Screen
                 name="Journal"
                 component={JournalScreen}
-                options={{ title: 'My Journal' }}
+                options={{
+                  title: 'Write Journal',
+                  tabBarIcon: ({ focused }) => (
+                    <TabBarIcon name="journal" focused={focused} />
+                  ),
+                }}
               />
-              <Stack.Screen
-                name="all-journals"
+              <Tab.Screen
+                name="AllJournals"
                 component={AllJournalsScreen}
-                options={{ title: 'All Journals' }}
+                options={{
+                  title: 'All Journals',
+                  tabBarIcon: ({ focused }) => (
+                    <TabBarIcon name="all-journals" focused={focused} />
+                  ),
+                }}
               />
-            </Stack.Navigator>
-          </NavigationContainer>
-    </GestureHandlerRootView>
-      </AstroProvider>
+            </Tab.Navigator>
+          </SafeAreaView>
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    </AstroProvider>
   );
 }
