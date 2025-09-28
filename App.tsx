@@ -15,8 +15,8 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <GestureHandlerRootView>
-      <AstroProvider>
+    <AstroProvider>
+        <GestureHandlerRootView>
           <NavigationContainer>
             <StatusBar />
             <Stack.Navigator
@@ -48,7 +48,7 @@ export default function App() {
               />
             </Stack.Navigator>
           </NavigationContainer>
-      </AstroProvider>
     </GestureHandlerRootView>
+      </AstroProvider>
   );
 }
