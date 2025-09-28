@@ -1,3 +1,4 @@
+// src/screens/AllJournalsScreen.js (Enhanced Version)
 import React, { useState } from 'react';
 import {
   View,
@@ -7,18 +8,23 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
-  Alert,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useAstro } from '../store/AstroContext';
 import { useNavigation } from '@react-navigation/native';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function AllJournalsScreen() {
   const navigator = useNavigation();
   const { journalEntries } = useAstro();
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('newest'); // 'newest', 'oldest', 'longest'
+  const [sortBy, setSortBy] = useState('newest');
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const formatDisplayDate = (dateString) => {
+  const formatDisplayDate = dateString => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -28,8 +34,27 @@ export default function AllJournalsScreen() {
     });
   };
 
-  const getWordCount = (text) => {
-    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  const formatShortDate = dateString => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const getWordCount = text => {
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter(word => word.length > 0).length;
+  };
+
+  const getReadingTime = text => {
+    const wordCount = getWordCount(text);
+    const wordsPerMinute = 200; // Average reading speed
+    const minutes = Math.ceil(wordCount / wordsPerMinute);
+    return minutes === 1 ? '1 min read' : `${minutes} min read`;
   };
 
   const getSortedAndFilteredEntries = () => {
@@ -37,9 +62,12 @@ export default function AllJournalsScreen() {
 
     // Filter by search query
     if (searchQuery.trim()) {
-      entries = entries.filter(([date, content]) => 
-        content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        formatDisplayDate(date).toLowerCase().includes(searchQuery.toLowerCase())
+      entries = entries.filter(
+        ([date, content]) =>
+          content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          formatDisplayDate(date)
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -62,34 +90,40 @@ export default function AllJournalsScreen() {
   };
 
   const handleEntryPress = (date, content) => {
-    Alert.alert(
-      formatDisplayDate(date),
-      content,
-      [
-        { text: 'Close', style: 'cancel' },
-        { 
-          text: 'Edit', 
-          onPress: () => {
-            // Navigate to journal screen for this date
-            router.push('/journal');
-          }
-        }
-      ]
-    );
+    setSelectedEntry({ date, content });
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedEntry(null);
+  };
+
+  const navigateToEdit = () => {
+    closeModal();
+    // You can pass the date as a parameter if needed
+    navigator.navigate('Journal');
   };
 
   const entries = getSortedAndFilteredEntries();
-  const totalWords = Object.values(journalEntries).reduce((total, entry) => 
-    total + getWordCount(entry), 0
+  const totalWords = Object.values(journalEntries).reduce(
+    (total, entry) => total + getWordCount(entry),
+    0,
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header Stats */}
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{Object.keys(journalEntries).length}</Text>
+            <Text style={styles.statNumber}>
+              {Object.keys(journalEntries).length}
+            </Text>
             <Text style={styles.statLabel}>Total Entries</Text>
           </View>
           <View style={styles.statItem}>
@@ -98,7 +132,9 @@ export default function AllJournalsScreen() {
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>
-              {Object.keys(journalEntries).length > 0 ? Math.round(totalWords / Object.keys(journalEntries).length) : 0}
+              {Object.keys(journalEntries).length > 0
+                ? Math.round(totalWords / Object.keys(journalEntries).length)
+                : 0}
             </Text>
             <Text style={styles.statLabel}>Avg Words</Text>
           </View>
@@ -123,19 +159,21 @@ export default function AllJournalsScreen() {
               { key: 'newest', label: 'Newest' },
               { key: 'oldest', label: 'Oldest' },
               { key: 'longest', label: 'Longest' },
-            ].map((option) => (
+            ].map(option => (
               <TouchableOpacity
                 key={option.key}
                 style={[
                   styles.sortButton,
-                  sortBy === option.key && styles.sortButtonActive
+                  sortBy === option.key && styles.sortButtonActive,
                 ]}
                 onPress={() => setSortBy(option.key)}
               >
-                <Text style={[
-                  styles.sortButtonText,
-                  sortBy === option.key && styles.sortButtonTextActive
-                ]}>
+                <Text
+                  style={[
+                    styles.sortButtonText,
+                    sortBy === option.key && styles.sortButtonTextActive,
+                  ]}
+                >
                   {option.label}
                 </Text>
               </TouchableOpacity>
@@ -151,16 +189,26 @@ export default function AllJournalsScreen() {
                 key={date}
                 style={styles.entryCard}
                 onPress={() => handleEntryPress(date, content)}
+                activeOpacity={0.7}
               >
                 <View style={styles.entryHeader}>
-                  <Text style={styles.entryDate}>{formatDisplayDate(date)}</Text>
-                  <Text style={styles.entryWordCount}>{getWordCount(content)} words</Text>
+                  <Text style={styles.entryDate}>
+                    {formatShortDate(date)}
+                  </Text>
+                  <View style={styles.entryMeta}>
+                    <Text style={styles.entryWordCount}>
+                      {getWordCount(content)} words
+                    </Text>
+                    <Text style={styles.readingTime}>
+                      • {getReadingTime(content)}
+                    </Text>
+                  </View>
                 </View>
                 <Text style={styles.entryPreview} numberOfLines={4}>
                   {content}
                 </Text>
                 <View style={styles.entryFooter}>
-                  <Text style={styles.readMoreText}>Tap to read more</Text>
+                  <Text style={styles.readMoreText}>Tap to read full entry</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -184,15 +232,19 @@ export default function AllJournalsScreen() {
             ) : (
               <>
                 <Text style={styles.emptyStateEmoji}>📖</Text>
-                <Text style={styles.emptyStateTitle}>No Journal Entries Yet</Text>
+                <Text style={styles.emptyStateTitle}>
+                  No Journal Entries Yet
+                </Text>
                 <Text style={styles.emptyStateText}>
                   Start your cosmic journey by writing your first journal entry
                 </Text>
                 <TouchableOpacity
                   style={styles.writeFirstButton}
-                  onPress={() => navigation.push('/journal')}
+                  onPress={() => navigator.navigate('Journal')}
                 >
-                  <Text style={styles.writeFirstText}>Write Your First Entry</Text>
+                  <Text style={styles.writeFirstText}>
+                    Write Your First Entry
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
@@ -203,12 +255,73 @@ export default function AllJournalsScreen() {
         {entries.length > 0 && (
           <TouchableOpacity
             style={styles.quickWriteButton}
-            onPress={() => navigator.navigate('/journal')}
+            onPress={() => navigator.navigate('Journal')}
           >
             <Text style={styles.quickWriteText}>✍️ Write New Entry</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      {/* Full Entry Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Journal Entry</Text>
+            <TouchableOpacity onPress={navigateToEdit} style={styles.editButton}>
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Modal Content */}
+          <ScrollView 
+            style={styles.modalContent}
+            contentContainerStyle={styles.modalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {selectedEntry && (
+              <>
+                {/* Entry Date and Stats */}
+                <View style={styles.modalEntryHeader}>
+                  <Text style={styles.modalEntryDate}>
+                    {formatDisplayDate(selectedEntry.date)}
+                  </Text>
+                  <View style={styles.modalEntryStats}>
+                    <Text style={styles.modalEntryStat}>
+                      {getWordCount(selectedEntry.content)} words
+                    </Text>
+                    <Text style={styles.modalEntryStat}>
+                      • {getReadingTime(selectedEntry.content)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Full Content */}
+                <View style={styles.modalEntryContent}>
+                  <Text style={styles.modalEntryText}>
+                    {selectedEntry.content}
+                  </Text>
+                </View>
+
+                {/* Entry Footer Info */}
+                <View style={styles.modalEntryFooter}>
+                  <Text style={styles.modalEntryFooterText}>
+                    Written on {formatDisplayDate(selectedEntry.date)}
+                  </Text>
+                </View>
+              </>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -331,10 +444,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#4C1D95',
   },
+  entryMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   entryWordCount: {
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  readingTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '400',
   },
   entryPreview: {
     fontSize: 14,
@@ -415,5 +537,107 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#4C1D95',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  editButton: {
+    padding: 8,
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  modalEntryHeader: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalEntryDate: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  modalEntryStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalEntryStat: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  modalEntryContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalEntryText: {
+    fontSize: 16,
+    color: '#1F2937',
+    lineHeight: 24,
+  },
+  modalEntryFooter: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modalEntryFooterText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
   },
 });
