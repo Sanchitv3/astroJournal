@@ -17,7 +17,6 @@ export default function App() {
   return (
     <GestureHandlerRootView>
       <AstroProvider>
-        <NavigationIndependentTree>
           <NavigationContainer>
             <StatusBar />
             <Stack.Navigator
@@ -49,7 +48,6 @@ export default function App() {
               />
             </Stack.Navigator>
           </NavigationContainer>
-        </NavigationIndependentTree>
       </AstroProvider>
     </GestureHandlerRootView>
   );
